@@ -28,6 +28,28 @@ def get_input_list(inputs):
 def get_graph_data(input):
     with open(input, 'r') as f:
         return json.load(f)
+    
+def process_node(n, node_idx, connection_dict, DG, link=False):
+    node_name = clean_name(n.get('name'))
+    theseNodes, theseEdges = [], []
+    input_names = []
+    if len(n.get('inputs')) > 0:
+        input_names = get_input_list(n.get('inputs'))
+
+    outputs = n.get('outputs')
+    for o in outputs:
+        if len(o.get('value')) > 1:
+                print('Multiple link outputs not supported yet... Only processing the first one for now...')
+        connection_dict[clean_name(o.get('value')[0].get('name'))] = node_idx
+    DG.add_node(node_idx, name=node_name, op=n.get('type'))
+
+    if link:
+        DG.add_edge(node_idx-1, node_idx)
+
+    for input_name in input_names:
+        if input_name in connection_dict.keys():
+            if connection_dict[input_name] != node_idx:
+                DG.add_edge(connection_dict[input_name], node_idx)
 
 def build_graph(graph_data, debug=False):
     DG = nx.DiGraph()
@@ -36,39 +58,11 @@ def build_graph(graph_data, debug=False):
     node_idx = 0
     connection_dict = dict()
     for n in nodes:
-        node_name = clean_name(n.get('name'))
-        input_names = []
-        if len(n.get('inputs')) > 0:
-            input_names = get_input_list(n.get('inputs'))
-
-        outputs = n.get('outputs')
-        for o in outputs:
-            if len(o.get('value')) > 1:
-                    print('Multiple link outputs not supported yet... Only processing the first one for now...')
-            connection_dict[clean_name(o.get('value')[0].get('name'))] = node_idx
-        DG.add_node(node_idx, name=node_name, op=n.get('type'))
-        for input_name in input_names:
-            if input_name in connection_dict.keys():
-                if connection_dict[input_name] != node_idx:
-                    DG.add_edge(connection_dict[input_name], node_idx)
-        parent_idx = node_idx
+        process_node(n, node_idx, connection_dict, DG)
         node_idx += 1 
 
         for link in n.get('chain'):
-            node_name = clean_name(link.get('name'))
-            outputs = link.get('outputs')
-            for o in outputs:
-                if len(o.get('value')) > 1:
-                    print('Multiple link outputs not supported yet... Only processing the first one for now...')
-                connection_dict[clean_name(o.get('value')[0].get('name'))] = node_idx
-            DG.add_node(node_idx, name=node_name, op=link.get('type'))
-            if node_idx - parent_idx == 1:
-                DG.add_edge(parent_idx, node_idx)
-            else:
-                DG.add_edge(node_idx-1, node_idx)
-            if node_name in connection_dict.keys():
-                if connection_dict[node_name] != node_idx:
-                    DG.add_edge(connection_dict[node_name], node_idx)
+            process_node(link, node_idx, connection_dict, DG, link=True)
             node_idx += 1 
         
         if debug:
@@ -81,16 +75,19 @@ def build_graph(graph_data, debug=False):
         pos = nx.spectral_layout(DG, scale=0.5)
         nx.draw(DG, pos,with_labels=True)
         plt.savefig(f"out.png")
+        node_data = DG.nodes(data=True)
+        for node, data in node_data:
+            print(f"Node {node}: {data}")
 
     return DG
 
 def main():
     cfg = load_config(args.config)
     graph_data = get_graph_data(cfg.get('input_graph_json'))
-    graph = build_graph(graph_data, debug=cfg.get('debug_graph'))
+    graph = build_graph(graph_data, debug=cfg.get('debug_graph', False))
     
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--config", required=True, help="Configuration YAML file", dest="config")
+    parser.add_argument("-c", "--config", required=False, help="Configuration YAML file", dest="config", default="cfg.yaml")
     args = parser.parse_args()
     main()
