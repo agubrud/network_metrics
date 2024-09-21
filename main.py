@@ -75,9 +75,7 @@ def build_graph(graph_data, debug=False):
         pos = nx.spectral_layout(DG, scale=0.5)
         nx.draw(DG, pos,with_labels=True)
         plt.savefig(f"out.png")
-        node_data = DG.nodes(data=True)
-        for node, data in node_data:
-            print(f"Node {node}: {data}")
+        nx.write_gexf(DG, "graph.gexf")
 
     return DG
 
