@@ -1,6 +1,12 @@
 import json
 import networkx as nx
 import matplotlib.pyplot as plt
+import argparse
+import yaml
+
+def load_config(cfg):
+    with open(cfg, 'r') as f:
+        return yaml.safe_load(f)
 
 def clean_name(name):
     return name.split('\n')[0]
@@ -19,7 +25,10 @@ def get_input_list(inputs):
                 input_list.append(clean_name(v.get('name')))
     return input_list
 
-def main(data):
+def main():
+    cfg = load_config(args.config)
+    with open(cfg["input"], 'r') as f:
+        data = json.load(f)
     DG = nx.DiGraph()
     nodes = data.get('nodes')
 
@@ -34,7 +43,7 @@ def main(data):
         outputs = n.get('outputs')
         for o in outputs:
             if len(o.get('value')) > 1:
-                    print('hmmm')
+                    print('Multiple link outputs not supported yet... Only processing the first one for now...')
             connection_dict[clean_name(o.get('value')[0].get('name'))] = node_idx
         DG.add_node(node_idx, name=node_name, op=n.get('type'))
         for input_name in input_names:
@@ -50,7 +59,7 @@ def main(data):
             outputs = link.get('outputs')
             for o in outputs:
                 if len(o.get('value')) > 1:
-                    print('hmmm')
+                    print('Multiple link outputs not supported yet... Only processing the first one for now...')
                 connection_dict[clean_name(o.get('value')[0].get('name'))] = node_idx
             DG.add_node(node_idx, name=node_name, op=link.get('type'))
             if node_idx - parent_idx == 1:
@@ -70,9 +79,9 @@ def main(data):
     pos = nx.spectral_layout(DG, scale=0.5)
     nx.draw(DG, pos,with_labels=True)
     plt.savefig(f"out.png")
-    print('hey')
-        
-if __name__ == '__main__':
-  with open('netron/youwillknow.json', 'r') as f:
-    data = json.load(f)
-  main(data)
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-c", "--config", required=True, help="Configuration YAML file", dest="config")
+    args = parser.parse_args()
+    main()
