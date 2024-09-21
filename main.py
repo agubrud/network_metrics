@@ -25,12 +25,13 @@ def get_input_list(inputs):
                 input_list.append(clean_name(v.get('name')))
     return input_list
 
-def main():
-    cfg = load_config(args.config)
-    with open(cfg["input"], 'r') as f:
-        data = json.load(f)
+def get_graph_data(input):
+    with open(input, 'r') as f:
+        return json.load(f)
+
+def build_graph(graph_data, debug=False):
     DG = nx.DiGraph()
-    nodes = data.get('nodes')
+    nodes = graph_data.get('nodes')
 
     node_idx = 0
     connection_dict = dict()
@@ -53,7 +54,6 @@ def main():
         parent_idx = node_idx
         node_idx += 1 
 
-        #chain_connection_dict = dict()
         for link in n.get('chain'):
             node_name = clean_name(link.get('name'))
             outputs = link.get('outputs')
@@ -71,15 +71,24 @@ def main():
                     DG.add_edge(connection_dict[node_name], node_idx)
             node_idx += 1 
         
+        if debug:
+            pos = nx.spectral_layout(DG, scale=0.5)
+            nx.draw(DG, pos,with_labels=True)
+            plt.savefig(f"node{node_idx}.png")
+            plt.clf()
+    
+    if debug:
         pos = nx.spectral_layout(DG, scale=0.5)
         nx.draw(DG, pos,with_labels=True)
-        plt.savefig(f"node{node_idx}.png")
-        plt.clf()
-    
-    pos = nx.spectral_layout(DG, scale=0.5)
-    nx.draw(DG, pos,with_labels=True)
-    plt.savefig(f"out.png")
+        plt.savefig(f"out.png")
 
+    return DG
+
+def main():
+    cfg = load_config(args.config)
+    graph_data = get_graph_data(cfg.get('input_graph_json'))
+    graph = build_graph(graph_data, debug=cfg.get('debug_graph'))
+    
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-c", "--config", required=True, help="Configuration YAML file", dest="config")
