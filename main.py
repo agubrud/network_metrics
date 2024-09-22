@@ -12,18 +12,18 @@ def clean_name(name):
     return name.split('\n')[0]
 
 def get_name_list(inputs):
-    input_list = []
+    name_list = []
     for i in inputs:
         if type(i) == list:
             for j in i:
                 vals = j.get('value')
                 for v in vals:
-                    input_list.append(clean_name(j.get('name')))
+                    name_list.append(clean_name(j.get('name')))
         else:
             vals = i.get('value')
             for v in vals:
-                input_list.append(clean_name(v.get('name')))
-    return input_list
+                name_list.append(clean_name(v.get('name')))
+    return name_list
 
 def get_graph_data(input):
     with open(input, 'r') as f:
