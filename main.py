@@ -11,7 +11,7 @@ def load_config(cfg):
 def clean_name(name):
     return name.split('\n')[0]
 
-def get_input_list(inputs):
+def get_name_list(inputs):
     input_list = []
     for i in inputs:
         if type(i) == list:
@@ -31,16 +31,14 @@ def get_graph_data(input):
     
 def process_node(n, node_idx, connection_dict, DG, link=False):
     node_name = clean_name(n.get('name'))
-    theseNodes, theseEdges = [], []
     input_names = []
     if len(n.get('inputs')) > 0:
-        input_names = get_input_list(n.get('inputs'))
+        input_names = get_name_list(n.get('inputs'))
 
-    outputs = n.get('outputs')
-    for o in outputs:
-        if len(o.get('value')) > 1:
-                print('Multiple link outputs not supported yet... Only processing the first one for now...')
-        connection_dict[clean_name(o.get('value')[0].get('name'))] = node_idx
+    if len(n.get('outputs')) > 0:
+        output_names = get_name_list(n.get('outputs'))
+        for o in output_names:
+            connection_dict[clean_name(o)] = node_idx
     DG.add_node(node_idx, name=node_name, op=n.get('type'))
 
     if link:
