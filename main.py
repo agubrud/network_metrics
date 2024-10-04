@@ -16,17 +16,18 @@ def get_name_list(inputs):
     name_list = []
     value_list = []
     for i in inputs:
-        if type(i) == list:
-            for j in i:
-                vals = j.get('value')
+        if i.get('name') in ['input', 'inputs', 'output', 'outputs', 'self']:
+            if type(i) == list:
+                for j in i:
+                    vals = j.get('value')
+                    for v in vals:
+                        name_list.append(clean_name(j.get('name')))
+            else:
+                vals = i.get('value')
                 for v in vals:
-                    name_list.append(clean_name(j.get('name')))
-        else:
-            vals = i.get('value')
-            for v in vals:
-                name_list.append(clean_name(v.get('name')))
-                if v.get('type') is not None and 'shape' in v.get('type').keys():
-                    value_list.append(next(iter(v.get('type').get('shape').values())))
+                    name_list.append(clean_name(v.get('name')))
+                    if v.get('type') is not None and 'shape' in v.get('type').keys():
+                        value_list.append(next(iter(v.get('type').get('shape').values())))
     return name_list, value_list
 
 def execute_graph(graph):
@@ -44,10 +45,6 @@ def execute_graph(graph):
             continue
         cur_node = graph.nodes[node]
         input_dims = cur_node.get('op_input_dims')
-        
-        # grabs only the source of the incoming edge
-        #cur_node['wt_size'] = op.instance.wt_size
-        #print(cur_node['wt_size'])
   
         input_nodes = [u for u, v in graph.edges if v == node]
         if len(input_nodes) > 1:
@@ -56,7 +53,6 @@ def execute_graph(graph):
             for i in input_nodes:
                 if i not in traversed_nodes:
                     tmp = i
-                    catchup_node = i
                     untraversed_stack = [i]
                     while tmp not in traversed_nodes:
                         untraversed_input_nodes = [u for u, v in graph.edges if v == tmp]
@@ -77,7 +73,6 @@ def execute_graph(graph):
                         print(f"{str(catchup_input_nodes)}, {cur_catchup_node}, {op.name}, {op.input_dims}, {op.op_count}, {op.output_dims}")
                         catchup_cur_node['op_output_dims'] = op.output_dims
                         traversed_nodes.append(cur_catchup_node)
-
 
         for n in input_nodes:
             prev_node = graph.nodes[n]
@@ -100,6 +95,10 @@ def process_node(n, node_idx, connection_dict, DG, link=False):
     if len(n.get('inputs')) > 0:
         input_names, input_vals = get_name_list(n.get('inputs'))
 
+    # TODO: find better way to handle situation where input dims aren't in input
+    if node_idx == 0 and len(input_vals) == 0:
+        input_vals = [[1,3,224,224]]
+        
     if len(n.get('outputs')) > 0:
         output_names, _ = get_name_list(n.get('outputs'))
         for o in output_names:
@@ -124,7 +123,7 @@ def build_graph(graph_data, debug=False):
         process_node(n, node_idx, connection_dict, DG)
         node_idx += 1 
 
-        for link in n.get('chain'):
+        for link in n.get('chain', []):
             process_node(link, node_idx, connection_dict, DG, link=True)
             node_idx += 1 
         

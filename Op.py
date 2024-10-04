@@ -104,6 +104,7 @@ class Pooling(_Op):
         self.input_channels = self.input_dims[0][1]
         self.in_x = self.input_dims[0][2]
         self.in_y = self.input_dims[0][3]
+        self.pad = [0, 0]
         for a in self.attr:
             attr_name = a.get('name')
             attr_value = a.get('value')
@@ -115,11 +116,8 @@ class Pooling(_Op):
             setattr(self, attr_name, attr_value)
 
     def calc_output_dims(self):
-        #output_height = (self.in_x - self.kernel_size[0] + 2 * padding) / self.stride[0] + 1
-        #output_width = (self.in_y - self.kernel_size[1] + 2 * padding) / self.stride[1] + 1
-        # TODO : where's the padding?
-        output_height = math.floor((self.in_x - self.kernel_size[0]) / self.stride[0] + 1)
-        output_width = math.floor((self.in_y - self.kernel_size[1]) / self.stride[1] + 1)
+        output_height = math.floor((self.in_x - self.kernel_size[0] + 2 * self.pad[0]) / self.stride[0] + 1)
+        output_width = math.floor((self.in_y - self.kernel_size[1] + 2 * self.pad[1]) / self.stride[1] + 1)
         self.output_dims.append([self.batch_size, self.input_channels, output_height, output_width])
 
     def calc_wt_dims(self):
@@ -159,7 +157,7 @@ class Other(_Op):
 
 class Op():
     def __init__(self, name, op_type, attr, input_dims):
-        if op_type in ["Convolution"]:
+        if op_type in ["Convolution", "conv2d"]:
             self.instance = Convolution(name, op_type, attr, input_dims)
         elif op_type in ["BatchNorm"]:
             self.instance = BatchNorm(name, op_type, attr, input_dims)
